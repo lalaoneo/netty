@@ -133,6 +133,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     NioEventLoop(NioEventLoopGroup parent, Executor executor, SelectorProvider selectorProvider,
                  SelectStrategy strategy, RejectedExecutionHandler rejectedExecutionHandler) {
         super(parent, executor, false, DEFAULT_MAX_PENDING_TASKS, rejectedExecutionHandler);
+        /**
+         * 选择器提供者,采用java的SPI机制
+         * 当前使用的是windows选择器提供者:WindowsSelectorProvider,根据系统环境自动创建
+         */
         if (selectorProvider == null) {
             throw new NullPointerException("selectorProvider");
         }
@@ -141,8 +145,18 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
         provider = selectorProvider;
         final SelectorTuple selectorTuple = openSelector();
+        /**
+         * 包装过的选择器:SelectedSelectionKeySetSelector
+         * 持有WindowsSelectorImpl和selectionKeys
+         */
         selector = selectorTuple.selector;
+        /**
+         * 未包装的选择器:WindowsSelectorImpl
+         */
         unwrappedSelector = selectorTuple.unwrappedSelector;
+        /**
+         * 选择策略,配合选择器
+         */
         selectStrategy = strategy;
     }
 
@@ -164,6 +178,10 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     private SelectorTuple openSelector() {
         final Selector unwrappedSelector;
         try {
+            /**
+             * 通过选择器提供者创建选择器WindowsSelectorImpl
+             * 未包装的原生的选择器
+             */
             unwrappedSelector = provider.openSelector();
         } catch (IOException e) {
             throw new ChannelException("failed to open a new selector", e);
@@ -177,6 +195,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             @Override
             public Object run() {
                 try {
+                    // 拿到sun.nio.ch.SelectorImpl 的字节码
                     return Class.forName(
                             "sun.nio.ch.SelectorImpl",
                             false,
@@ -189,24 +208,41 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
         if (!(maybeSelectorImplClass instanceof Class) ||
             // ensure the current selector implementation is what we can instrument.
+            /**
+             * (Class<?>) maybeSelectorImplClass).isAssignableFrom(unwrappedSelector.getClass())
+             * 判断unwrappedSelector.getClass()是不是Class<?>) maybeSelectorImplClass的子类或者接口
+             *
+             * class1.isAssignableFrom(class2) 判定此 Class 对象所表示的类或接口与指定的 Class 参数所表示的类或接口是否相同，
+             * 或是否是其超类或超接口。如果是则返回 true；否则返回 false。
+             * 如果该 Class 表示一个基本类型，且指定的 Class 参数正是该 Class 对象，则该方法返回 true；否则返回 false
+             */
             !((Class<?>) maybeSelectorImplClass).isAssignableFrom(unwrappedSelector.getClass())) {
+            // 如果进来,获取SelectorImpl字节码失败
             if (maybeSelectorImplClass instanceof Throwable) {
                 Throwable t = (Throwable) maybeSelectorImplClass;
                 logger.trace("failed to instrument a special java.util.Set into: {}", unwrappedSelector, t);
             }
+            // 返回一个SelectorTuple未包装的原生selector
             return new SelectorTuple(unwrappedSelector);
         }
-
+        //获取SelectorImpl字节码成功
         final Class<?> selectorImplClass = (Class<?>) maybeSelectorImplClass;
         final SelectedSelectionKeySet selectedKeySet = new SelectedSelectionKeySet();
-
+        /**
+         * AccessController.doPrivileged不进行权限校验,比如在服务器创建文件等
+         */
         Object maybeException = AccessController.doPrivileged(new PrivilegedAction<Object>() {
             @Override
             public Object run() {
                 try {
+                    /**
+                     *获取selectorImpl的field:selectedKeys,publicSelectedKeys
+                     * selectedKeys,publicSelectedKeys是Set 和 HashSet,为了替换为SelectedSelectionKeySet
+                     * SelectedSelectionKeySet 优化的方案  用数组实现set集合  add添加的时间复杂度降低为O(1)
+                     */
                     Field selectedKeysField = selectorImplClass.getDeclaredField("selectedKeys");
                     Field publicSelectedKeysField = selectorImplClass.getDeclaredField("publicSelectedKeys");
-
+                    // 判断JDK的版本是否大于等于9,本地使用的是JDK8,暂时忽略这段代码
                     if (PlatformDependent.javaVersion() >= 9 && PlatformDependent.hasUnsafe()) {
                         // Let us try to use sun.misc.Unsafe to replace the SelectionKeySet.
                         // This allows us to also do this in Java9+ without any extra flags.
@@ -223,7 +259,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         }
                         // We could not retrieve the offset, lets try reflection as last-resort.
                     }
-
+                    // 允许修改属性值
                     Throwable cause = ReflectionUtil.trySetAccessible(selectedKeysField, true);
                     if (cause != null) {
                         return cause;
@@ -232,7 +268,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                     if (cause != null) {
                         return cause;
                     }
-
+                    // 修改unwrappedSelector的selectedKeys属性和publicSelectedKeys属性为selectedKeySet
                     selectedKeysField.set(unwrappedSelector, selectedKeySet);
                     publicSelectedKeysField.set(unwrappedSelector, selectedKeySet);
                     return null;
@@ -243,7 +279,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 }
             }
         });
-
+        // 如果反射修改报错,返回一个SelectorTuple未包装的原生selector
         if (maybeException instanceof Exception) {
             selectedKeys = null;
             Exception e = (Exception) maybeException;
@@ -252,6 +288,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
         }
         selectedKeys = selectedKeySet;
         logger.trace("instrumented a special java.util.Set into: {}", unwrappedSelector);
+        //返回优化后的selector
         return new SelectorTuple(unwrappedSelector,
                                  new SelectedSelectionKeySetSelector(unwrappedSelector, selectedKeySet));
     }
