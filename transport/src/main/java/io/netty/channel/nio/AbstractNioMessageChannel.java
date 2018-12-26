@@ -54,7 +54,11 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
         }
         super.doBeginRead();
     }
-
+    /**
+     * Unsafe接口实际上是Channel接口的辅助接口，它不应该被用户直接调用。
+     * 实际的网络I/O读写操作都是由Unsafe接口及其功能类负责实现的。它的含义不是说它的方法是不安全的，
+     * 而是说它的接口是给框架本身调用的，不要暴露给业务层调用
+     */
     private final class NioMessageUnsafe extends AbstractNioUnsafe {
 
         private final List<Object> readBuf = new ArrayList<Object>();
