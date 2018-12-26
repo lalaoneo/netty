@@ -90,7 +90,9 @@ public class DefaultChannelPipeline implements ChannelPipeline {
     private boolean registered;
 
     protected DefaultChannelPipeline(Channel channel) {
+        // NioServerSocketChannel
         this.channel = ObjectUtil.checkNotNull(channel, "channel");
+        // 接受IO操作的结果,异步接受
         succeededFuture = new SucceededChannelFuture(channel, null);
         voidPromise =  new VoidChannelPromise(channel, true);
 
