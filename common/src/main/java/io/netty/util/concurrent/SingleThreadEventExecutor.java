@@ -159,10 +159,24 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
                                         boolean addTaskWakesUp, int maxPendingTasks,
                                         RejectedExecutionHandler rejectedHandler) {
         super(parent);
+        /**
+         * addTaskWakesUp的表示添加任务时是否会唤醒线程。啥意思呢，
+         * 比如一个线程里执行了一个阻塞方法 BlockingQueue.take()，该方法在没有获取到数据的时候一直阻塞，
+         * 要想恢复，往该BlockingQueue中加一个对象就可以了，线程恢复了执行，就可以进行其他判断了（如线程是否被关闭之类的判断）。
+         * DefaultEventExecutor传入的addTaskWakesUp=true, 因为它能阻塞的地方就在BlockingQueue.take()，
+         * 因此加入一个任务可以唤醒线程，这里就为true。
+         * 而NioEventLoop阻塞的地方在selector.select，加入task也无法立即唤醒线程，因此addTaskWakesUp=false
+         */
         this.addTaskWakesUp = addTaskWakesUp;
         this.maxPendingTasks = Math.max(16, maxPendingTasks);
+        /**
+         * 用于创建并启动I/O线程
+         */
         this.executor = ObjectUtil.checkNotNull(executor, "executor");
         taskQueue = newTaskQueue(this.maxPendingTasks);
+        /**
+         * 任务拒绝策略
+         */
         rejectedExecutionHandler = ObjectUtil.checkNotNull(rejectedHandler, "rejectedHandler");
     }
 
