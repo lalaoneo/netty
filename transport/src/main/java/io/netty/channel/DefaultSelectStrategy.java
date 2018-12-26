@@ -26,6 +26,11 @@ final class DefaultSelectStrategy implements SelectStrategy {
     private DefaultSelectStrategy() { }
 
     @Override
+    /**
+     * 选择策略,如果有任务就获取,否则进行阻塞
+     * IntSupplier 实现:
+     * 1：NioEventLoop实现了一个叫selectNowSupplier
+     */
     public int calculateStrategy(IntSupplier selectSupplier, boolean hasTasks) throws Exception {
         return hasTasks ? selectSupplier.get() : SelectStrategy.SELECT;
     }
