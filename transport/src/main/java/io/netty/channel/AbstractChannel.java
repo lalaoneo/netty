@@ -80,7 +80,9 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      */
     protected AbstractChannel(Channel parent) {
         this.parent = parent;
+        // 创建通道唯一ID
         id = newId();
+        // 网咯读写操作类
         unsafe = newUnsafe();
         pipeline = newChannelPipeline();
     }
