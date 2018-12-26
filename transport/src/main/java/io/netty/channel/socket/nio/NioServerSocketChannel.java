@@ -46,6 +46,9 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
                              implements io.netty.channel.socket.ServerSocketChannel {
 
     private static final ChannelMetadata METADATA = new ChannelMetadata(false, 16);
+    /**
+     * channel选择器,本机是windows,所以获取的是WindowsSelectorImpl
+     */
     private static final SelectorProvider DEFAULT_SELECTOR_PROVIDER = SelectorProvider.provider();
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(NioServerSocketChannel.class);
@@ -57,6 +60,7 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
              *  {@link SelectorProvider#provider()} which is called by each ServerSocketChannel.open() otherwise.
              *
              *  See <a href="https://github.com/netty/netty/issues/2308">#2308</a>.
+             *  底层代码,通过windows的选择器获取一个ServerSocketChannelImpl,还没有绑定的socket通道
              */
             return provider.openServerSocketChannel();
         } catch (IOException e) {
@@ -83,8 +87,17 @@ public class NioServerSocketChannel extends AbstractNioMessageChannel
 
     /**
      * Create a new instance using the given {@link ServerSocketChannel}.
+     * java.nio.channels.ServerSocketChannel 是一个基于通道的socket监听器
+     * 它同我们所熟悉的java.net.ServerSocket执行相同的基本任务，不过它增加了通道语义，因此能够在非阻塞模式下运行
+     * ServerSocketChannel ssc = ServerSocketChannel.open();
+     * ServerSocket serverSocket = ssc.socket();
+     * serverSocket.bind(new InetSocketAddress(1234));
+     * 如果您选择在ServerSocket上调用accept( )方法，那么它会同任何其他的ServerSocket表现一样的行为：总是阻塞并返回一个java.net.Socket对象(阻塞的！！！！)
+     * 如果您选择在ServerSocketChannel上调用accept( )方法则会返回SocketChannel类型的对象，返回的对象能够在非阻塞模式下运行。
+     *
      */
     public NioServerSocketChannel(ServerSocketChannel channel) {
+        // 监听链接事件
         super(null, channel, SelectionKey.OP_ACCEPT);
         config = new NioServerSocketChannelConfig(this, javaChannel().socket());
     }
