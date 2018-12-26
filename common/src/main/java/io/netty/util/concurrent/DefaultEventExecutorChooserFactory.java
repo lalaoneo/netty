@@ -38,7 +38,7 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
             return new GenericEventExecutorChooser(executors);
         }
     }
-
+    // 判断val是否是2的幂次方
     private static boolean isPowerOfTwo(int val) {
         return (val & -val) == val;
     }
@@ -52,6 +52,10 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
         }
 
         @Override
+        /**
+         * idx 与 线程池数组-1 进行&运算
+         * 线程池数组长度为2,运算结果：0,1,0,1...
+         */
         public EventExecutor next() {
             return executors[idx.getAndIncrement() & executors.length - 1];
         }
