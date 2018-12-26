@@ -57,6 +57,11 @@ public class NioEventLoopTest extends AbstractEventLoopTest {
     @Test
     public void testRebuildSelector() {
         EventLoopGroup group = new NioEventLoopGroup(1);
+        /**
+         * NioEventLoopGroup持有NioEventLoop数组对象
+         * 持有NioEventLoop数组选择器(长度是2的幂次方使用与计算选择,否则使用取模计算)
+         * 取出一个NioEventLoop
+         */
         final NioEventLoop loop = (NioEventLoop) group.next();
         try {
             Channel channel = new NioServerSocketChannel();
