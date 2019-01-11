@@ -124,6 +124,8 @@ public abstract class SimpleChannelInboundHandler<I> extends ChannelInboundHandl
      *                      belongs to
      * @param msg           the message to handle
      * @throws Exception    is thrown if an error occurred
+     * 会自动释放已读取的资源
+     * 所以不要存储指向该资源的引用，因为这些引用都会失效
      */
     protected abstract void channelRead0(ChannelHandlerContext ctx, I msg) throws Exception;
 }
