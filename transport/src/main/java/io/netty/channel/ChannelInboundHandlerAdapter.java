@@ -80,6 +80,8 @@ public class ChannelInboundHandlerAdapter extends ChannelHandlerAdapter implemen
      * to the next {@link ChannelInboundHandler} in the {@link ChannelPipeline}.
      *
      * Sub-classes may override this method to change behavior.
+     * 不会自动释放资源,需要显示调用该ReferenceCountUtil.release(msg)方法释放资源
+     * 否则可能造成资源的泄露，资源释放后不会传递到下一个handler中
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
