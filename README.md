@@ -1,4 +1,4 @@
-# 本人学习demo: example->src.main.java.lori
+# 本人实践demo: example->src.main.java.lori
 
 # Netty Project
 
