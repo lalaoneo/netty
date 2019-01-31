@@ -1,9 +1,3 @@
-# 对比一下哪一个比较好
-
-[JAVA并发编程实战](http://www.java1234.com/a/javabook/javabase/2017/0907/8857.html)
-
-[JAVA并发编程实战](https://blog.csdn.net/qq_38491499/article/details/80962262)
-
 # Netty Project
 
 Netty is an asynchronous event-driven network application framework for rapid development of maintainable high performance protocol servers & clients.
